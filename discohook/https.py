@@ -102,7 +102,7 @@ class HTTPClient:
     async def edit_interaction_mp_callback(
             self, interaction_id: str, interaction_token: str, form: aiohttp.MultipartWriter
     ):
-        return await self.multipart("PATCH", f"/interactions/{interaction_id}/{interaction_token}/callback", form=form)
+        return await self.multipart("PATCH", f"/interactions/{interaction_id}/{interaction_token}/@original", form=form)
 
     async def fetch_guild(self, guild_id: str):
         return await self.request("GET", f"/guilds/{guild_id}?with_counts=true", use_auth=True)
