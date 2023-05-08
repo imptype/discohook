@@ -81,7 +81,11 @@ async def handler(request: Request):
                 await component.__call__(interaction, build_select_menu_values(interaction))
 
         elif data["type"] == InteractionType.modal_submit.value:
-            component = request.app.active_components.get(interaction.data["custom_id"])
+            interaction = ComponentInteraction(data, request.app)
+            custom_id = interaction.data["custom_id"]
+            if request.app._custom_id_parser:
+                custom_id = await request.app._custom_id_parser(custom_id)
+            component = request.app.active_components.get(custom_id)
             if not component:
                 return JSONResponse({"error": "component not found!"}, status_code=404)
             args, kwargs = build_modal_params(component.callback, interaction)
