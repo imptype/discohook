@@ -39,6 +39,10 @@ async def handler(request: Request):
     try:
         if interaction.type == InteractionType.ping:
             return JSONResponse({"type": InteractionCallbackType.pong.value}, status_code=200)
+        
+        if request.app._global_interaction_check:
+            if not await request.app._global_interaction_check(interaction):
+                return JSONResponse({"message": "failed interaction check", status_code=200)
 
         elif interaction.type == InteractionType.app_command:
             key = f"{interaction.data['name']}:{interaction.data['type']}"
