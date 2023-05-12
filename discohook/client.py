@@ -79,6 +79,7 @@ class Client(FastAPI):
             "/api/commands/{command_id}/{token}", delete_cmd, methods=["DELETE"], include_in_schema=False)
         self.error_handler: Optional[Callable] = None
         self._custom_id_parser: Optional[Callable] = None
+        self._global_interaction_check: Optional[Callable] = None
 
     def load_components(self, view: View):
         """
@@ -200,6 +201,15 @@ class Client(FastAPI):
         coro: Callable
         """
         self._custom_id_parser = coro
+       
+    def global_interaction_check(self, coro: Callable):
+        """
+        A decorator to register a dev defined global interaction check.
+        Parameters
+        ----------
+        coro: Callable
+        """
+        self._global_interaction_check = coro
         
     async def send_message(
         self,
