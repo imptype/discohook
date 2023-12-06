@@ -115,6 +115,7 @@ class Client(Starlette):
         self.add_route("/api/verify", authenticate, methods=["POST"], include_in_schema=False)
         self.add_route("/api/commands", delete_cmd, methods=["DELETE"], include_in_schema=False)
         self._custom_id_parser: Optional[Callable[[Interaction, str], str]] = None
+        self._before_invoke: Optional[Callable[[Interaction, str], str]] = None
         if default_help_command:
             self.add_commands(_help)
         self._interaction_error_handler: Optional[Callable[[Interaction, Exception], Any]] = None
@@ -242,6 +243,18 @@ class Client(Starlette):
             if not asyncio.iscoroutinefunction(coro):
                 raise TypeError("Custom id parser must be a coroutine.")
             self._custom_id_parser = coro
+
+        return decorator
+        
+    def before_invoke(self):
+        """
+        A decorator to register a global interaction before invoke handler.
+        """
+
+        def decorator(coro: Callable[[Interaction, str], str]):
+            if not asyncio.iscoroutinefunction(coro):
+                raise TypeError("Before invoke handler must be a coroutine.")
+            self._before_invoke = coro
 
         return decorator
 
