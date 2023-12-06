@@ -46,6 +46,9 @@ async def _handler(request: Request):
     data = await request.json()
     interaction = Interaction(request.app, data)
     try:
+        if request.app._before_invoke:
+            await request.app._before_invoke(interaction)
+            
         if interaction.kind == InteractionType.ping:
             return JSONResponse({"type": InteractionCallbackType.pong}, status_code=200)
 
