@@ -19,6 +19,7 @@ from .resolver import (
     build_select_menu_values,
     build_slash_command_params,
 )
+from .https import HTTPClient
 
 
 def _command_key(interaction: Interaction) -> str:
@@ -45,6 +46,7 @@ async def _handler(request: Request):
         return Response(content="BadSignature", status_code=401)
     data = await request.json()
     interaction = Interaction(request.app, data)
+    request.app.http = HTTPClient(self, token, aiohttp.ClientSession("https://discord.com", loop = asyncio.get_event_loop()))
     try:
         if interaction.kind == InteractionType.ping:
             return JSONResponse({"type": InteractionCallbackType.pong}, status_code=200)
