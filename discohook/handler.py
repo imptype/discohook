@@ -1,4 +1,5 @@
 import asyncio
+import aiohttp
 
 import ed25519
 from starlette.requests import Request
