@@ -115,9 +115,7 @@ class Client(Starlette):
         self.public_key = public_key
         self.application_id = application_id
         self.password = password
-        self.http = HTTPClient(
-            self, token, aiohttp.ClientSession("https://discord.com")
-        )
+        self.http = HTTPClient(self, token)
         self.active_components: Dict[str, Component] = {}
         self._sync_queue: List[ApplicationCommand] = []
         self.commands: Dict[str, ApplicationCommand] = {}
