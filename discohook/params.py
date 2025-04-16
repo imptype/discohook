@@ -1,7 +1,7 @@
 import json
 import mimetypes
 from enum import Enum, IntEnum
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, Tuple, Union, TYPE_CHECKING
 
 import aiohttp
 
@@ -15,25 +15,26 @@ if TYPE_CHECKING:
 
 MISSING = Any
 
-
 class _SendingPayload:
     def __init__(
-            self,
-            *,
-            content: Optional[str] = None,
-            embed: Optional[Embed] = None,
-            embeds: Optional[List[Embed]] = None,
-            view: Optional[View] = None,
-            tts: Optional[bool] = False,
-            file: Optional[File] = None,
-            files: Optional[List[File]] = None,
-            ephemeral: Optional[bool] = False,
-            allowed_mentions: Optional[AllowedMentions] = None,
-            message_reference: Optional[MessageReference] = None,
-            sticker_ids: Optional[List[str]] = None,
-            suppress_embeds: Optional[bool] = False,
-            supress_notifications: Optional[bool] = False,
-            poll: Optional["Poll"] = None,
+        self,
+        *,
+        content: Optional[str] = None,
+        embed: Optional[Embed] = None,
+        embeds: Optional[List[Embed]] = None,
+        view: Optional[View] = None,
+        tts: Optional[bool] = False,
+        file: Optional[File] = None,
+        files: Optional[List[File]] = None,
+        ephemeral: Optional[bool] = False,
+        allowed_mentions: Optional[AllowedMentions] = None,
+        message_reference: Optional[MessageReference] = None,
+        sticker_ids: Optional[List[str]] = None,
+        suppress_embeds: Optional[bool] = False,
+        supress_notifications: Optional[bool] = False,
+        poll: Optional["Poll"] = None,
+        payload_type: Optional[Enum] = None,
+        **kwargs
     ):
         self.content = content
         self.embed = embed
@@ -49,6 +50,8 @@ class _SendingPayload:
         self.suppress_embeds = suppress_embeds
         self.supress_notifications = supress_notifications
         self.poll = poll
+        self.payload_type = payload_type
+        self.kwargs = kwargs
 
     def _merge_fields(self):
         if not self.files or self.files is MISSING:
@@ -62,34 +65,7 @@ class _SendingPayload:
         for embed in self.embeds:
             self.files.extend(embed.attachments)
 
-    @staticmethod
-    def _create_form(
-            payload: Dict[str, Any], files: Optional[List[File]] = None
-    ) -> aiohttp.MultipartWriter:
-        form = aiohttp.MultipartWriter("form-data")
-        # noinspection PyTypeChecker
-        form.append(
-            json.dumps(payload),
-            headers={
-                "Content-Disposition": 'form-data; name="payload_json"',
-                "Content-Type": "application/json",
-            },
-        )
-        if not files:
-            files = []
-        for i, file in enumerate(files):
-            mime, _ = mimetypes.guess_type(file.name)
-            # noinspection PyTypeChecker
-            form.append(
-                file.content,
-                headers={
-                    "Content-Disposition": f'form-data; name="files[{i}]"; filename="{file.name}"',
-                    "Content-Type": mime or "application/octet-stream",
-                },
-            )
-        return form
-
-    def _handle_send_params(self):
+    def _handle_params(self) -> Dict[str, Any]:
         self._merge_fields()
         payload = {}
         flag_value = 0
@@ -129,31 +105,49 @@ class _SendingPayload:
             payload["poll"] = self.poll.to_dict()
         return payload
 
-    def to_dict(self, payload_type: Optional[Enum] = None, **kwargs) -> Dict[str, Any]:
-        data = self._handle_send_params()
-        data.update(kwargs)
-        if payload_type is None:
-            return data
-        return {"data": data, "type": int(payload_type.value)}
+    def compile(self) -> Union[str, aiohttp.MultipartWriter]:
+        data = self._handle_params()
+        data.update(**self.kwargs)
 
-    def to_form(
-            self, payload_type: Optional[Enum] = None, **kwargs
-    ) -> aiohttp.MultipartWriter:
-        return self._create_form(self.to_dict(payload_type, **kwargs), self.files)
+        if self.payload_type is not None:
+            data = {"data": data, "type": int(self.payload_type.value)}
 
+        if self.files:
+            form = aiohttp.MultipartWriter("form-data")
+            form.append(
+                json.dumps(data),
+                headers={
+                    "Content-Disposition": 'form-data; name="payload_json"',
+                    "Content-Type": "application/json",
+                },
+            )
+            for i, file in enumerate(self.files):
+                mime, _ = mimetypes.guess_type(file.name)
+                form.append(
+                    file.content,
+                    headers={
+                        "Content-Disposition": f'form-data; name="files[{i}]"; filename="{file.name}"',
+                        "Content-Type": mime or "application/octet-stream",
+                    },
+                )
+            return form
+
+        return json.dumps(data)
 
 class _EditingPayload(_SendingPayload):
     def __init__(
-            self,
-            *,
-            content: Optional[str] = MISSING,
-            embed: Optional[Embed] = MISSING,
-            embeds: Optional[List[Embed]] = MISSING,
-            view: Optional[View] = MISSING,
-            tts: Optional[bool] = MISSING,
-            file: Optional[File] = MISSING,
-            files: Optional[List[File]] = MISSING,
-            suppress_embeds: Optional[bool] = MISSING,
+        self,
+        *,
+        content: Optional[str] = MISSING,
+        embed: Optional[Embed] = MISSING,
+        embeds: Optional[List[Embed]] = MISSING,
+        view: Optional[View] = MISSING,
+        tts: Optional[bool] = MISSING,
+        file: Optional[File] = MISSING,
+        files: Optional[List[File]] = MISSING,
+        suppress_embeds: Optional[bool] = MISSING,
+        payload_type: Optional[Enum] = None,
+        **kwargs
     ):
         super().__init__(
             content=content,
@@ -164,21 +158,20 @@ class _EditingPayload(_SendingPayload):
             file=file,
             files=files,
             suppress_embeds=suppress_embeds,
+            payload_type=payload_type,
+            **kwargs
         )
 
-    def _handle_edit_params(self):
+    def _handle_params(self) -> Dict[str, Any]:
         self._merge_fields()
         payload = {}
-        if self.embed is None:
-            payload["embeds"] = []
-        if self.embeds is None:
+        if self.embed is None or self.embeds is None:
             payload["embeds"] = []
         if self.view is None:
             payload["components"] = []
-        if self.file is None:
+        if self.file is None or self.files is None:
             payload["attachments"] = []
-        if self.files is None:
-            payload["attachments"] = []
+
         if self.content is not MISSING:
             payload["content"] = str(self.content)
         if self.tts is not MISSING:
@@ -201,17 +194,3 @@ class _EditingPayload(_SendingPayload):
             payload["flags"] = 1 << 2
 
         return payload
-
-    def to_dict(
-            self, payload_type: Optional[IntEnum] = None, **kwargs
-    ) -> Dict[str, Any]:
-        data = self._handle_edit_params()
-        data.update(kwargs)
-        if payload_type is None:
-            return data
-        return {"data": data, "type": payload_type}
-
-    def to_form(
-            self, payload_type: Optional[Enum] = None, **kwargs
-    ) -> aiohttp.MultipartWriter:
-        return self._create_form(self.to_dict(payload_type, **kwargs), self.files)

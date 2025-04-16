@@ -1,38 +1,30 @@
-from typing import Any, TYPE_CHECKING
+from typing import Any
 
 import aiohttp
 
-if TYPE_CHECKING:
-    from .interaction import Interaction
 
-
-class InteractionException(Exception):
-    """Base exception for Discohook."""
-
-    def __init__(self, message: str, interaction: "Interaction"):
-        self.message = message
-        self.interaction = interaction
-        super().__init__(message)
-
-class InteractionTypeMismatch(InteractionException):
+class InteractionTypeMismatch(Exception):
     """Raised when the interaction type is not the expected type."""
 
-    def __init__(self, message: str, interaction: "Interaction"):
-        super().__init__(message, interaction)
+    def __init__(self, message: str):
+        self.message = message
+        super().__init__(message)
 
 
-class CheckFailure(InteractionException):
+class CheckFailure(Exception):
     """Raised when a check fails."""
 
-    def __init__(self, message: str, interaction: "Interaction"):
-        super().__init__(message, interaction)
+    def __init__(self, message: str):
+        self.message = message
+        super().__init__(message)
 
 
-class UnknownInteractionType(InteractionException):
+class UnknownInteractionType(Exception):
     """Raised when the interaction type is unknown."""
 
-    def __init__(self, message: str, interaction: "Interaction"):
-        super().__init__(message, interaction)
+    def __init__(self, message: str):
+        self.message = message
+        super().__init__(message)
 
 
 class HTTPException(Exception):
@@ -40,5 +32,6 @@ class HTTPException(Exception):
 
     def __init__(self, resp: aiohttp.ClientResponse, data: Any):
         self.resp = resp
-        message = f"[{resp.method}] {resp.url.path} {resp.status} with code({data['code']}): {data['message']}"
+        code = f' (code: {data['code']})' if 'code' in data else ''
+        message = f"[{resp.method} {resp.status}{code}] {resp.url.path}\n{data}"
         super().__init__(message)

@@ -11,7 +11,6 @@ from .channel import Channel, PartialChannel
 from .command import ApplicationCommand
 from .dash import dashboard
 from .embed import Embed
-from .errors import InteractionException
 from .file import File
 from .guild import Guild
 from .handler import _handler
@@ -116,7 +115,7 @@ class Client(Starlette):
         self.public_key = public_key
         self.application_id = application_id
         self.password = password
-        self.http = HTTPClient(self, token)
+        self.http = HTTPClient(token=token, application_id=application_id)
         self.active_components: Dict[str, Component] = {}
         self._sync_queue: List[ApplicationCommand] = []
         self.commands: Dict[str, ApplicationCommand] = {}
@@ -133,7 +132,7 @@ class Client(Starlette):
         if default_help_command:
             self.add_commands(_help)
         self._interaction_error_handler: Optional[
-            Callable[[InteractionException], Any]
+            Callable[[Interaction, Exception], Any]
         ] = None
 
     def on_error(self):
@@ -244,7 +243,7 @@ class Client(Starlette):
         A decorator to register a global interaction error handler.
         """
 
-        def decorator(coro: Callable[[InteractionException], Any]):
+        def decorator(coro: Callable[[Interaction, Exception], Any]):
             if not asyncio.iscoroutinefunction(coro):
                 raise TypeError("Exception handler must be a coroutine.")
             self._interaction_error_handler = coro
@@ -435,7 +434,7 @@ class Client(Starlette):
         resp = await self.http.fetch_guild(guild_id)
         data = await resp.json()
         if not data.get("id"):
-            return None
+            return
         return Guild(self, data)
 
     async def fetch_user(self, user_id: str) -> Optional[User]:
@@ -449,7 +448,7 @@ class Client(Starlette):
         resp = await self.http.fetch_user(user_id)
         data = await resp.json()
         if not data.get("id"):
-            return None
+            return
         return User(self, data)
 
     async def fetch_channel(self, channel_id: str) -> Optional[Channel]:
@@ -463,7 +462,7 @@ class Client(Starlette):
         resp = await self.http.fetch_channel(channel_id)
         data = await resp.json()
         if not data.get("id"):
-            return None
+            return
         return Channel(self, data)
 
     async def fetch_commands(self):

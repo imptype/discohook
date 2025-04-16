@@ -12,7 +12,7 @@ from .enums import (
     InteractionCallbackType,
     InteractionType,
 )
-from .errors import CheckFailure, UnknownInteractionType, InteractionException
+from .errors import CheckFailure, UnknownInteractionType
 from .interaction import Interaction
 from .resolver import (
     build_context_menu_param,
@@ -64,11 +64,10 @@ async def _handler(request: Request):
                     for result in results:
                         if not isinstance(result, bool):
                             raise CheckFailure(
-                                f"check returned {type(result)}, expected bool",
-                                interaction
+                                f"check returned {type(result)}, expected bool"
                             )
                     if not all(results):
-                        raise CheckFailure(f"command checks failed", interaction)
+                        raise CheckFailure(f"command checks failed")
 
                 if not (interaction.data["type"] == ApplicationCommandType.slash):
                     await cmd(interaction, build_context_menu_param(interaction))
@@ -88,7 +87,7 @@ async def _handler(request: Request):
             except Exception as e:
                 if not cmd._error_handler:
                     raise e
-                await cmd._error_handler(InteractionException(str(e), interaction))
+                await cmd._error_handler(interaction, e)
 
         elif interaction.type == InteractionType.autocomplete:
             cmd: ApplicationCommand = request.app.commands.get(_build_key(interaction))
@@ -133,11 +132,10 @@ async def _handler(request: Request):
                     for result in results:
                         if not isinstance(result, bool):
                             raise CheckFailure(
-                                f"check returned {type(result)}, expected bool",
-                                interaction
+                                f"check returned {type(result)}, expected bool"
                             )
                     if not all(results):
-                        raise CheckFailure("component checks failed", interaction)
+                        raise CheckFailure("component checks failed")
 
                 if interaction.type == InteractionType.component:
                     if interaction.data["component_type"] == ComponentType.button:
@@ -152,12 +150,12 @@ async def _handler(request: Request):
             except Exception as e:
                 if not component._error_handler:
                     raise e
-                await component._error_handler(InteractionException(str(e), interaction))
+                await component._error_handler(interaction, e)
         else:
-            raise UnknownInteractionType(f"unknown interaction type {interaction.type}", interaction)
+            raise UnknownInteractionType(f"unknown interaction type {interaction.type}")
     except Exception as e:
         if request.app._interaction_error_handler:
-            await request.app._interaction_error_handler(InteractionException(str(e), interaction))
+            await request.app._interaction_error_handler(interaction, e)
             return Response(status_code=500)
         else:
             raise e from None

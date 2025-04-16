@@ -200,12 +200,12 @@ class ResponseAdapter:
             suppress_embeds=suppress_embeds,
             allowed_mentions=allowed_mentions,
             poll=poll,
+            payload_type=InteractionCallbackType.channel_message_with_source
         )
         if view:
             self.inter.client.load_view(view)
-        payload = payload.to_form(InteractionCallbackType.channel_message_with_source)
         self.inter._responded = True
-        await self.inter.client.http.send_interaction_mp_callback(
+        await self.inter.client.http.create_interaction_response(
             self.inter.id, self.inter.token, payload
         )
         return InteractionResponse(self.inter)
@@ -227,7 +227,7 @@ class ResponseAdapter:
             InteractionType.component,
             InteractionType.app_command,
         ):
-            raise InteractionTypeMismatch(f"Method not supported for {self.inter.type}", self.inter)
+            raise InteractionTypeMismatch(f"Method not supported for {self.inter.type}")
         self.inter.client.active_components[modal.custom_id] = modal
         payload = {
             "data": modal.to_dict(),
@@ -249,7 +249,7 @@ class ResponseAdapter:
             The choices to send
         """
         if self.inter.type != InteractionType.autocomplete:
-            raise InteractionTypeMismatch(f"Method not supported for {self.inter.type}", self.inter)
+            raise InteractionTypeMismatch(f"Method not supported for {self.inter.type}")
         choices = choices[:25]
         payload = {
             "type": InteractionCallbackType.autocomplete,
@@ -297,7 +297,7 @@ class ResponseAdapter:
             if ephemeral:
                 payload["data"] = {"flags": 64}
         else:
-            raise InteractionTypeMismatch(f"Method not supported for {self.inter.type}", self.inter)
+            raise InteractionTypeMismatch(f"Method not supported for {self.inter.type}")
 
         self.inter._responded = True
         await self.inter.client.http.send_interaction_callback(
@@ -311,7 +311,7 @@ class ResponseAdapter:
         This method is only available for applications with a premium SKU set up
         """
         if self.inter.type == InteractionType.autocomplete:
-            raise InteractionTypeMismatch(f"Method not supported for {self.inter.type}", self.inter)
+            raise InteractionTypeMismatch(f"Method not supported for {self.inter.type}")
         payload = {
             "data": {},
             "type": InteractionCallbackType.premium_required,
@@ -365,7 +365,7 @@ class ResponseAdapter:
             self.inter.type == InteractionType.component
             or self.inter.type == InteractionType.modal_submit
         ):
-            raise InteractionTypeMismatch(f"Method not supported for {self.inter.type}", self.inter)
+            raise InteractionTypeMismatch(f"Method not supported for {self.inter.type}")
 
         payload = _EditingPayload(
             content=content,
