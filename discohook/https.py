@@ -22,7 +22,7 @@ class HTTPClient:
     ):
         self.token = token
         self.application_id = application_id
-        self.session: Optional[aiohttp.ClientSession] = session
+        self.session = session
 
     async def request(
         self,
